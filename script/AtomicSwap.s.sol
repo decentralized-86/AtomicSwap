@@ -1,12 +1,27 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.13;
 
-import {Script, console2} from "forge-std/Script.sol";
+import "../src/AtomicSwap.sol";
+import "../src/Tokens.sol";
 
-contract CounterScript is Script {
+import {Script, console2} from "forge-std/Script.sol";
+import "forge-std/console2.sol"; 
+import "forge-std/StdCheats.sol";
+import "forge-std/Vm.sol";
+import "forge-std/Test.sol";
+
+contract DeployAtomicSwap is Script {
     function setUp() public {}
 
     function run() public {
-        vm.broadcast();
+        uint256 privatekey =  vm.envUint("PRIVATE_KEY");
+       address account = vm.addr(privatekey);
+
+       
+        vm.startBroadcast(privatekey);
+        AtomicSwap atomicswap  = new AtomicSwap();
+        Token token = new Token();
+
+        vm.stopBroadcast();
     }
 }

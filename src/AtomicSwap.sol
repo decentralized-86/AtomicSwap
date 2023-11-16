@@ -159,4 +159,7 @@ contract AtomicSwap {
 
         emit SenderRefunded(_id);
     }
+    function viewBalance() external view returns(uint256){
+        return address(this).balance;
+    }
 }

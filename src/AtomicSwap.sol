@@ -159,6 +159,92 @@ contract AtomicSwap {
 
         emit SenderRefunded(_id);
     }
+    function erc20ToErc20Payment(
+        bytes32 _id,
+        address _sendingTokenAddress,
+        uint256 _sendingAmount,
+        address _receivingTokenAddress,
+        uint256 _receivingAmount,
+        address _receiver,
+        bytes20 _secretHash,
+        uint64 _lockTime
+    ) external {
+        require(
+            _sendingTokenAddress != address(0) &&
+            _receivingTokenAddress != address(0) &&
+            _sendingAmount > 0 &&
+            _receivingAmount > 0 &&
+            _receiver != address(0) &&
+            payments[_id].state == PaymentState.Uninitialized
+        );
+        bytes20 paymentHash = ripemd160(abi.encodePacked(
+            _receiver,
+            msg.sender,
+            _secretHash,
+            _sendingTokenAddress,
+            _sendingAmount,
+            _receivingTokenAddress,
+            _receivingAmount
+        ));
+        payments[_id] = Payment(
+            paymentHash,
+            _lockTime,
+            PaymentState.PaymentSent
+        );
+        IERC20 sendingToken = IERC20(_sendingTokenAddress);
+        require(sendingToken.transferFrom(msg.sender, address(this), _sendingAmount));
+
+        emit PaymentSent(_id);
+}
+
+    function completeErc20ToErc20Swap(
+        bytes32 _id,
+        bytes32 _secret,
+        address _sendingTokenAddress,
+        uint256 _sendingAmount,
+        address _receivingTokenAddress,
+        uint256 _receivingAmount,
+        address _sender
+    ) external {
+        require(payments[_id].state == PaymentState.PaymentSent, "Payment not initiated or already completed");
+
+        bytes20 paymentHash = ripemd160(abi.encodePacked(
+            msg.sender, 
+            _sender,
+            ripemd160(abi.encodePacked(sha256(abi.encodePacked(_secret)))),
+            _sendingTokenAddress,
+            _sendingAmount,
+            _receivingTokenAddress,
+            _receivingAmount
+        ));
+
+        require(paymentHash == payments[_id].paymentHash, "Invalid secret or payment details");
+
+        payments[_id].state = PaymentState.ReceiverSpent;
+
+        IERC20 receivingToken = IERC20(_receivingTokenAddress);
+        require(receivingToken.transfer(msg.sender, _receivingAmount), "Token transfer failed");
+
+        emit ReceiverSpent(_id, _secret);
+}
+
+
+    function reclaimErc20Tokens(
+        bytes32 _id,
+        address _sendingTokenAddress,
+        uint256 _sendingAmount
+    ) external {
+        require(payments[_id].state == PaymentState.PaymentSent, "Payment not in correct state");
+        require(block.timestamp > payments[_id].lockTime, "Lock time has not expired");
+
+        payments[_id].state = PaymentState.SenderRefunded;
+
+        IERC20 sendingToken = IERC20(_sendingTokenAddress);
+        require(sendingToken.transfer(msg.sender, _sendingAmount), "Token refund failed");
+
+        emit SenderRefunded(_id);
+}
+
     function viewBalance() external view returns(uint256){
         return address(this).balance;
     }

@@ -56,7 +56,6 @@ function testCompleteNFTSwap() public {
 
     bytes32 id = keccak256("unique_swap_id");
     bytes32 secret = bytes32(abi.encodePacked("secret_value")); 
-    // bytes20 secretHash = ripemd160(abi.encodePacked("secret_value"));
 
     vm.startPrank(receiver); 
     bytes20 paymentHash1 = ripemd160(abi.encodePacked(
